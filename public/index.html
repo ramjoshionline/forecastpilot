@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ForecastPilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0f11;
+    --bg2: #16181c;
+    --bg3: #1e2026;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8e9eb;
+    --text2: #8b8f99;
+    --text3: #555a66;
+    --accent: #c8f564;
+    --accent2: #a8d44a;
+    --accent-dim: rgba(200,245,100,0.08);
+    --accent-dim2: rgba(200,245,100,0.15);
+    --red: #ff6b6b;
+    --amber: #ffb547;
+    --mono: 'DM Mono', monospace;
+    --serif: 'DM Serif Display', serif;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.6; }
+
+  /* Layout */
+  .shell { display: grid; grid-template-columns: 280px 1fr; height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 28px 24px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: var(--serif);
+    font-size: 22px;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .logo-sub {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .sidebar-section {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-label {
+    font-size: 10px;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    margin-bottom: 12px;
+  }
+
+  .formula {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text2);
+    line-height: 1.9;
+  }
+
+  .formula .f-highlight { color: var(--accent); font-weight: 500; }
+  .formula .f-op { color: var(--text3); }
+
+  .steps-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .steps-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text3);
+    padding: 5px 8px;
+    border-radius: 6px;
+    transition: color 0.2s;
+  }
+
+  .steps-list li.active { color: var(--text2); background: var(--bg3); }
+  .steps-list li.done { color: var(--accent2); }
+  .steps-list li.done .step-num { background: var(--accent); color: var(--bg); }
+
+  .step-num {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .model-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(200,245,100,0.2);
+    border-radius: 20px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--accent);
+  }
+
+  .model-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Main area */
+  .main {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .topbar {
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+
+  .topbar-title {
+    font-size: 13px;
+    color: var(--text2);
+    font-family: var(--mono);
+  }
+
+  .topbar-actions { display: flex; gap: 8px; }
+
+  .btn {
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-family: var(--mono);
+    cursor: pointer;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn:hover { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: 500;
+  }
+
+  .btn-primary:hover { background: var(--accent2); border-color: var(--accent2); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Chat area */
+  .chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    scroll-behavior: smooth;
+  }
+
+  .chat-area::-webkit-scrollbar { width: 4px; }
+  .chat-area::-webkit-scrollbar-track { background: transparent; }
+  .chat-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* Welcome screen */
+  .welcome {
+    max-width: 560px;
+    margin: 40px auto 0;
+    text-align: center;
+  }
+
+  .welcome-icon {
+    width: 64px; height: 64px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(200,245,100,0.2);
+    border-radius: 16px;
+    margin: 0 auto 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+  }
+
+  .welcome h1 {
+    font-family: var(--serif);
+    font-size: 30px;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 10px;
+  }
+
+  .welcome p {
+    color: var(--text2);
+    font-size: 14px;
+    line-height: 1.7;
+    margin-bottom: 28px;
+  }
+
+  .starter-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    text-align: left;
+  }
+
+  .starter-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .starter-card:hover {
+    border-color: rgba(200,245,100,0.3);
+    background: var(--bg3);
+  }
+
+  .starter-card .s-label {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 5px;
+  }
+
+  .starter-card .s-text {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.4;
+  }
+
+  /* Messages */
+  .message { display: flex; flex-direction: column; gap: 6px; animation: fadeUp 0.2s ease; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.user { align-items: flex-end; }
+  .message.assistant { align-items: flex-start; }
+
+  .msg-bubble {
+    max-width: 72%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.65;
+  }
+
+  .message.user .msg-bubble {
+    background: var(--accent-dim2);
+    border: 1px solid rgba(200,245,100,0.25);
+    color: var(--text);
+    border-bottom-right-radius: 4px;
+  }
+
+  .message.assistant .msg-bubble {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* Markdown inside assistant bubbles */
+  .msg-bubble h1 {
+    font-family: var(--serif);
+    font-size: 22px;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin: 8px 0 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .msg-bubble h2 {
+    font-size: 14px;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--accent);
+    margin: 20px 0 8px;
+  }
+
+  .msg-bubble h3 {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin: 14px 0 6px;
+  }
+
+  .msg-bubble p { margin-bottom: 10px; font-size: 14px; }
+
+  .msg-bubble ul, .msg-bubble ol {
+    padding-left: 18px;
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+
+  .msg-bubble li { margin-bottom: 4px; }
+
+  .msg-bubble table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+    font-family: var(--mono);
+  }
+
+  .msg-bubble th {
+    background: var(--bg3);
+    color: var(--accent);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border2);
+  }
+
+  .msg-bubble td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+
+  .msg-bubble tr:last-child td { border-bottom: none; }
+  .msg-bubble tr:hover td { background: var(--bg3); }
+
+  .msg-bubble code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+
+  .msg-bubble pre {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    overflow-x: auto;
+    margin: 10px 0;
+  }
+
+  .msg-bubble pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .msg-bubble strong { color: var(--text); font-weight: 500; }
+  .msg-bubble em { color: var(--text2); }
+
+  /* Reasoning indicator */
+  .reasoning-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text3);
+    width: fit-content;
+  }
+
+  .reasoning-dots {
+    display: flex;
+    gap: 3px;
+  }
+
+  .reasoning-dots span {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: dotBounce 1.2s infinite;
+  }
+
+  .reasoning-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .reasoning-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes dotBounce {
+    0%, 60%, 100% { opacity: 0.2; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-3px); }
+  }
+
+  /* JSON block hiding */
+  .json-raw { display: none; }
+
+  /* Download bar */
+  .download-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--accent-dim);
+    border: 1px solid rgba(200,245,100,0.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 12px;
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--accent);
+  }
+
+  /* Input area */
+  .input-area {
+    padding: 16px 28px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  .input-wrap {
+    flex: 1;
+    position: relative;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    transition: border-color 0.15s;
+  }
+
+  .input-wrap:focus-within { border-color: rgba(200,245,100,0.4); }
+
+  #user-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    padding: 12px 16px;
+    resize: none;
+    min-height: 46px;
+    max-height: 140px;
+    line-height: 1.5;
+  }
+
+  #user-input::placeholder { color: var(--text3); }
+
+  .input-hint {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+    margin-top: 8px;
+    padding: 0 2px;
+  }
+
+  /* New forecast button */
+  #new-btn {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">Forecast<span>Pilot</span></div>
+      <div class="logo-sub">AI Revenue Agent</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Formula</div>
+      <div class="formula">
+        <span class="f-highlight">AI Revenue</span> =<br>
+        &nbsp;&nbsp;<span class="f-highlight">SOM</span> <span class="f-op">×</span> Adoption<br>
+        &nbsp;&nbsp;<span class="f-op">×</span> Usage/User<br>
+        &nbsp;&nbsp;<span class="f-op">×</span> Retention<br>
+        &nbsp;&nbsp;<span class="f-op">×</span> Rev/Unit
+      </div>
+    </div>
+
+    <div class="sidebar-section" style="flex:1; overflow-y:auto;">
+      <div class="sidebar-label">Reasoning steps</div>
+      <ul class="steps-list" id="steps-list">
+        <li data-step="1"><span class="step-num">1</span> Derive SOM from TAM</li>
+        <li data-step="2"><span class="step-num">2</span> Select adoption curve</li>
+        <li data-step="3"><span class="step-num">3</span> Segment usage profiles</li>
+        <li data-step="4"><span class="step-num">4</span> Model revenue paths</li>
+        <li data-step="5"><span class="step-num">5</span> Apply cohort retention</li>
+        <li data-step="6"><span class="step-num">6</span> Generate 3 scenarios</li>
+        <li data-step="7"><span class="step-num">7</span> Triangulation checks</li>
+        <li data-step="8"><span class="step-num">8</span> Forecast + confidence</li>
+      </ul>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="model-badge">
+        <span class="model-dot"></span>
+        claude-opus-4-6
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <span class="topbar-title">// revenue forecasting session</span>
+      <div class="topbar-actions">
+        <button class="btn" id="new-btn" onclick="newSession()">+ New forecast</button>
+      </div>
+    </div>
+
+    <div class="chat-area" id="chat-area">
+      <!-- Welcome -->
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">◈</div>
+        <h1>Ready to forecast.</h1>
+        <p>Give me your total user base and a description of your AI feature. I'll run the full 8-step framework and return three scenarios — conservative, base, and optimistic.</p>
+        <div class="starter-grid">
+          <div class="starter-card" onclick="fillInput('100,000 users. AI design suggestion engine embedded in our CAD tool — recommends geometry optimisations for engineers during the modelling phase.')">
+            <div class="s-label">Example 1</div>
+            <div class="s-text">CAD tool with AI design suggestions — 100k engineers</div>
+          </div>
+          <div class="starter-card" onclick="fillInput('45,000 users. AI contract review assistant for a legal SaaS platform — highlights risky clauses and suggests edits inline for lawyers and paralegals.')">
+            <div class="s-label">Example 2</div>
+            <div class="s-text">Legal SaaS with AI contract review — 45k users</div>
+          </div>
+          <div class="starter-card" onclick="fillInput('250,000 users. AI writing assistant embedded in a B2B project management tool — helps PMs draft project briefs, status updates, and stakeholder comms.')">
+            <div class="s-label">Example 3</div>
+            <div class="s-text">PM tool with AI writing assistant — 250k users</div>
+          </div>
+          <div class="starter-card" onclick="fillInput('12,000 users. AI anomaly detection feature in a manufacturing IoT platform — automatically flags equipment deviation patterns for plant operators.')">
+            <div class="s-label">Example 4</div>
+            <div class="s-text">IoT platform with AI anomaly detection — 12k users</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-row">
+        <div class="input-wrap">
+          <textarea id="user-input" rows="1" placeholder="Enter your TAM and AI feature description, or ask a clarifying question…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        </div>
+        <button class="btn btn-primary" id="send-btn" onclick="sendMessage()">Send →</button>
+      </div>
+      <div class="input-hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line &nbsp;·&nbsp; Min. inputs: user base + feature description</div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  let history = [];
+  let isStreaming = false;
+  let renderTimer = null;
+  let currentBuffer = '';
+  let currentBubble = null;
+
+  marked.setOptions({ breaks: true, gfm: true });
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function fillInput(text) {
+    const input = document.getElementById('user-input');
+    input.value = text;
+    autoResize(input);
+    input.focus();
+  }
+
+  function hideWelcome() {
+    const w = document.getElementById('welcome');
+    if (w) w.remove();
+  }
+
+  function newSession() {
+    history = [];
+    document.getElementById('chat-area').innerHTML = '';
+    document.getElementById('new-btn').style.display = 'none';
+    resetSteps();
+
+    const welcome = document.createElement('div');
+    welcome.className = 'welcome';
+    welcome.id = 'welcome';
+    welcome.innerHTML = `
+      <div class="welcome-icon">◈</div>
+      <h1>Ready to forecast.</h1>
+      <p>Give me your total user base and a description of your AI feature. I'll run the full 8-step framework and return three scenarios — conservative, base, and optimistic.</p>
+      <div class="starter-grid">
+        <div class="starter-card" onclick="fillInput('100,000 users. AI design suggestion engine embedded in our CAD tool — recommends geometry optimisations for engineers during the modelling phase.')">
+          <div class="s-label">Example 1</div>
+          <div class="s-text">CAD tool with AI design suggestions — 100k engineers</div>
+        </div>
+        <div class="starter-card" onclick="fillInput('45,000 users. AI contract review assistant for a legal SaaS platform — highlights risky clauses and suggests edits inline for lawyers and paralegals.')">
+          <div class="s-label">Example 2</div>
+          <div class="s-text">Legal SaaS with AI contract review — 45k users</div>
+        </div>
+      </div>`;
+    document.getElementById('chat-area').appendChild(welcome);
+  }
+
+  function resetSteps() {
+    document.querySelectorAll('#steps-list li').forEach(li => {
+      li.classList.remove('active', 'done');
+    });
+  }
+
+  function activateStep(n) {
+    const items = document.querySelectorAll('#steps-list li');
+    items.forEach((li, i) => {
+      const step = i + 1;
+      if (step < n) { li.classList.remove('active'); li.classList.add('done'); li.querySelector('.step-num').textContent = '✓'; }
+      else if (step === n) { li.classList.add('active'); li.classList.remove('done'); li.querySelector('.step-num').textContent = n; }
+      else { li.classList.remove('active', 'done'); li.querySelector('.step-num').textContent = step; }
+    });
+  }
+
+  function detectStep(text) {
+    const patterns = [
+      { step: 1, re: /SOM|serviceable obtainable|derive.*tam|filter.*tam/i },
+      { step: 2, re: /adoption curve|adoption rate/i },
+      { step: 3, re: /usage.*profile|segment.*usage|light.*moderate.*heavy|blended.*usage/i },
+      { step: 4, re: /revenue path|subscription upgrade|on-demand|overage/i },
+      { step: 5, re: /retention|cohort|retention floor/i },
+      { step: 6, re: /scenario|conservative|optimistic/i },
+      { step: 7, re: /triangulation|validation|benchmark check|revenue share check/i },
+      { step: 8, re: /confidence rating|assumption log|FORECAST_JSON/i },
+    ];
+    for (const { step, re } of patterns) {
+      if (re.test(text)) activateStep(step);
+    }
+  }
+
+  function appendUserMessage(text) {
+    hideWelcome();
+    const chat = document.getElementById('chat-area');
+    const msg = document.createElement('div');
+    msg.className = 'message user';
+    msg.innerHTML = `<div class="msg-bubble">${escapeHtml(text)}</div>`;
+    chat.appendChild(msg);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function escapeHtml(t) {
+    return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  }
+
+  function showReasoning() {
+    const chat = document.getElementById('chat-area');
+    const indicator = document.createElement('div');
+    indicator.className = 'message assistant';
+    indicator.id = 'reasoning-indicator';
+    indicator.innerHTML = `
+      <div class="reasoning-indicator">
+        <div class="reasoning-dots"><span></span><span></span><span></span></div>
+        Analysing inputs and building forecast…
+      </div>`;
+    chat.appendChild(indicator);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function removeReasoning() {
+    const el = document.getElementById('reasoning-indicator');
+    if (el) el.remove();
+  }
+
+  function createAssistantBubble() {
+    const chat = document.getElementById('chat-area');
+    const msg = document.createElement('div');
+    msg.className = 'message assistant';
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    msg.appendChild(bubble);
+    chat.appendChild(msg);
+    return bubble;
+  }
+
+  function scheduleRender() {
+    if (renderTimer) return;
+    renderTimer = setInterval(() => {
+      if (currentBubble && currentBuffer) {
+        const displayText = cleanForDisplay(currentBuffer);
+        currentBubble.innerHTML = marked.parse(displayText);
+        document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
+        detectStep(currentBuffer);
+      }
+    }, 80);
+  }
+
+  function cleanForDisplay(text) {
+    const jsonStart = text.indexOf('FORECAST_JSON_START');
+    if (jsonStart !== -1) return text.substring(0, jsonStart).trim();
+    return text;
+  }
+
+  function extractJSON(text) {
+    const start = text.indexOf('FORECAST_JSON_START');
+    const end = text.indexOf('FORECAST_JSON_END');
+    if (start === -1 || end === -1) return null;
+    const raw = text.substring(start + 'FORECAST_JSON_START'.length, end).trim();
+    try { return JSON.parse(raw); } catch { return null; }
+  }
+
+  function finaliseMessage(fullText) {
+    clearInterval(renderTimer);
+    renderTimer = null;
+
+    const displayText = cleanForDisplay(fullText);
+    currentBubble.innerHTML = marked.parse(displayText);
+
+    const jsonData = extractJSON(fullText);
+    if (jsonData) {
+      const bar = document.createElement('div');
+      bar.className = 'download-bar';
+      bar.innerHTML = `
+        <span>◈ Forecast JSON ready</span>
+        <button class="btn btn-primary" onclick="downloadJSON(this)" style="padding:5px 12px;font-size:11px;">Download JSON ↓</button>`;
+      bar.querySelector('button').dataset.json = JSON.stringify(jsonData, null, 2);
+      currentBubble.appendChild(bar);
+    }
+
+    document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
+    document.getElementById('new-btn').style.display = 'inline-flex';
+    activateStep(8);
+  }
+
+  function downloadJSON(btn) {
+    const json = btn.dataset.json;
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `forecastpilot-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function sendMessage() {
+    if (isStreaming) return;
+    const input = document.getElementById('user-input');
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = '';
+    input.style.height = 'auto';
+    document.getElementById('send-btn').disabled = true;
+    isStreaming = true;
+
+    history.push({ role: 'user', content: text });
+    appendUserMessage(text);
+    showReasoning();
+
+    currentBuffer = '';
+    currentBubble = null;
+
+    try {
+      const res = await fetch('/api/forecast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: history })
+      });
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let firstChunk = true;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const lines = decoder.decode(value).split('\n');
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6);
+          if (data === '[DONE]') continue;
+
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.error) { console.error(parsed.error); continue; }
+            if (parsed.text) {
+              if (firstChunk) {
+                removeReasoning();
+                currentBubble = createAssistantBubble();
+                scheduleRender();
+                firstChunk = false;
+              }
+              currentBuffer += parsed.text;
+            }
+          } catch {}
+        }
+      }
+
+      finaliseMessage(currentBuffer);
+      history.push({ role: 'assistant', content: currentBuffer });
+
+    } catch (err) {
+      removeReasoning();
+      console.error(err);
+    } finally {
+      isStreaming = false;
+      document.getElementById('send-btn').disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
