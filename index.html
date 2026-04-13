@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ForecastPilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0e0f11; --bg2: #16181c; --bg3: #1e2026;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+    --text: #e8e9eb; --text2: #8b8f99; --text3: #555a66;
+    --accent: #c8f564; --accent2: #a8d44a;
+    --accent-dim: rgba(200,245,100,0.08); --accent-dim2: rgba(200,245,100,0.15);
+    --mono: 'DM Mono', monospace; --serif: 'DM Serif Display', serif; --sans: 'DM Sans', sans-serif;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.6; }
+
+  /* API Key Gate */
+  #api-gate {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+  }
+  .gate-card {
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 16px; padding: 36px 40px; max-width: 440px; width: 90%;
+  }
+  .gate-logo { font-family: var(--serif); font-size: 26px; margin-bottom: 6px; }
+  .gate-logo span { color: var(--accent); }
+  .gate-sub { font-size: 12px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 24px; }
+  .gate-label { font-size: 12px; font-family: var(--mono); color: var(--text2); margin-bottom: 8px; }
+  .gate-input {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 11px 14px; color: var(--text);
+    font-family: var(--mono); font-size: 13px; outline: none;
+    transition: border-color 0.15s; margin-bottom: 12px;
+  }
+  .gate-input:focus { border-color: rgba(200,245,100,0.4); }
+  .gate-note { font-size: 11px; color: var(--text3); margin-bottom: 20px; line-height: 1.6; }
+  .gate-note a { color: var(--accent); text-decoration: none; }
+  .gate-btn {
+    width: 100%; padding: 11px; background: var(--accent); color: var(--bg);
+    border: none; border-radius: 8px; font-family: var(--mono); font-size: 13px;
+    font-weight: 500; cursor: pointer; transition: background 0.15s;
+  }
+  .gate-btn:hover { background: var(--accent2); }
+  .gate-error { font-size: 12px; color: #ff6b6b; font-family: var(--mono); margin-top: 8px; display: none; }
+
+  /* Layout */
+  .shell { display: grid; grid-template-columns: 280px 1fr; height: 100vh; }
+  .sidebar { background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .sidebar-header { padding: 28px 24px 24px; border-bottom: 1px solid var(--border); }
+  .logo { font-family: var(--serif); font-size: 22px; color: var(--text); letter-spacing: -0.02em; margin-bottom: 4px; }
+  .logo span { color: var(--accent); }
+  .logo-sub { font-size: 11px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; }
+  .sidebar-section { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); }
+  .sidebar-label { font-size: 10px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--text3); margin-bottom: 12px; }
+  .formula { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-family: var(--mono); font-size: 10.5px; color: var(--text2); line-height: 1.9; }
+  .formula .f-highlight { color: var(--accent); font-weight: 500; }
+  .formula .f-op { color: var(--text3); }
+  .steps-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .steps-list li { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text3); padding: 5px 8px; border-radius: 6px; transition: color 0.2s; }
+  .steps-list li.active { color: var(--text2); background: var(--bg3); }
+  .steps-list li.done { color: var(--accent2); }
+  .steps-list li.done .step-num { background: var(--accent); color: var(--bg); }
+  .step-num { width: 18px; height: 18px; border-radius: 50%; background: var(--bg3); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 9px; color: var(--text3); flex-shrink: 0; transition: all 0.3s; }
+  .sidebar-footer { margin-top: auto; padding: 16px 24px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .model-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--accent-dim); border: 1px solid rgba(200,245,100,0.2); border-radius: 20px; padding: 5px 10px; font-size: 11px; font-family: var(--mono); color: var(--accent); }
+  .model-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .key-btn { font-size: 10px; font-family: var(--mono); color: var(--text3); background: transparent; border: 1px solid var(--border); border-radius: 4px; padding: 3px 7px; cursor: pointer; transition: all 0.15s; }
+  .key-btn:hover { color: var(--text2); border-color: var(--border2); }
+
+  /* Main */
+  .main { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  .topbar { padding: 16px 28px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--bg); flex-shrink: 0; }
+  .topbar-title { font-size: 13px; color: var(--text2); font-family: var(--mono); }
+  .btn { padding: 7px 14px; border-radius: 7px; font-size: 12px; font-family: var(--mono); cursor: pointer; border: 1px solid var(--border2); background: transparent; color: var(--text2); transition: all 0.15s; letter-spacing: 0.02em; }
+  .btn:hover { background: var(--bg3); color: var(--text); }
+  .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 500; }
+  .btn-primary:hover { background: var(--accent2); border-color: var(--accent2); }
+  .btn-primary:disabled, .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Chat */
+  .chat-area { flex: 1; overflow-y: auto; padding: 32px 28px; display: flex; flex-direction: column; gap: 24px; scroll-behavior: smooth; }
+  .chat-area::-webkit-scrollbar { width: 4px; }
+  .chat-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* Welcome */
+  .welcome { max-width: 560px; margin: 40px auto 0; text-align: center; }
+  .welcome-icon { width: 64px; height: 64px; background: var(--accent-dim); border: 1px solid rgba(200,245,100,0.2); border-radius: 16px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+  .welcome h1 { font-family: var(--serif); font-size: 30px; color: var(--text); letter-spacing: -0.02em; margin-bottom: 10px; }
+  .welcome p { color: var(--text2); font-size: 14px; line-height: 1.7; margin-bottom: 28px; }
+  .starter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; }
+  .starter-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: all 0.15s; }
+  .starter-card:hover { border-color: rgba(200,245,100,0.3); background: var(--bg3); }
+  .starter-card .s-label { font-size: 10px; font-family: var(--mono); color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
+  .starter-card .s-text { font-size: 13px; color: var(--text); line-height: 1.4; }
+
+  /* Messages */
+  .message { display: flex; flex-direction: column; gap: 6px; animation: fadeUp 0.2s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .message.user { align-items: flex-end; }
+  .message.assistant { align-items: flex-start; }
+  .msg-bubble { max-width: 72%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.65; }
+  .message.user .msg-bubble { background: var(--accent-dim2); border: 1px solid rgba(200,245,100,0.25); color: var(--text); border-bottom-right-radius: 4px; }
+  .message.assistant .msg-bubble { background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; max-width: 100%; width: 100%; }
+  .msg-bubble h1 { font-family: var(--serif); font-size: 22px; color: var(--text); letter-spacing: -0.02em; margin: 8px 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .msg-bubble h2 { font-size: 14px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.07em; color: var(--accent); margin: 20px 0 8px; }
+  .msg-bubble h3 { font-size: 14px; font-weight: 500; color: var(--text); margin: 14px 0 6px; }
+  .msg-bubble p { margin-bottom: 10px; font-size: 14px; }
+  .msg-bubble ul, .msg-bubble ol { padding-left: 18px; margin-bottom: 10px; font-size: 14px; }
+  .msg-bubble li { margin-bottom: 4px; }
+  .msg-bubble table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; font-family: var(--mono); }
+  .msg-bubble th { background: var(--bg3); color: var(--accent); font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border2); }
+  .msg-bubble td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; }
+  .msg-bubble tr:last-child td { border-bottom: none; }
+  .msg-bubble tr:hover td { background: var(--bg3); }
+  .msg-bubble code { font-family: var(--mono); font-size: 12px; background: var(--bg3); border: 1px solid var(--border); padding: 1px 5px; border-radius: 4px; color: var(--accent); }
+  .msg-bubble pre { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 14px; overflow-x: auto; margin: 10px 0; }
+  .msg-bubble pre code { background: none; border: none; padding: 0; font-size: 12px; color: var(--text2); }
+  .msg-bubble strong { color: var(--text); font-weight: 500; }
+
+  /* Reasoning */
+  .reasoning-indicator { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; font-family: var(--mono); color: var(--text3); width: fit-content; }
+  .reasoning-dots { display: flex; gap: 3px; }
+  .reasoning-dots span { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); animation: dotBounce 1.2s infinite; }
+  .reasoning-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .reasoning-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotBounce { 0%, 60%, 100% { opacity: 0.2; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+
+  /* Download bar */
+  .download-bar { display: flex; align-items: center; justify-content: space-between; background: var(--accent-dim); border: 1px solid rgba(200,245,100,0.2); border-radius: 8px; padding: 10px 14px; margin-top: 12px; font-size: 12px; font-family: var(--mono); color: var(--accent); }
+
+  /* Input area */
+  .input-area { padding: 16px 28px 20px; border-top: 1px solid var(--border); background: var(--bg); flex-shrink: 0; }
+  .input-row { display: flex; gap: 10px; align-items: flex-end; }
+  .input-wrap { flex: 1; position: relative; background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px; transition: border-color 0.15s; }
+  .input-wrap:focus-within { border-color: rgba(200,245,100,0.4); }
+  #user-input { width: 100%; background: transparent; border: none; outline: none; color: var(--text); font-family: var(--sans); font-size: 14px; padding: 12px 16px; resize: none; min-height: 46px; max-height: 140px; line-height: 1.5; }
+  #user-input::placeholder { color: var(--text3); }
+  .input-hint { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 8px; padding: 0 2px; }
+</style>
+</head>
+<body>
+
+<!-- API Key Gate -->
+<div id="api-gate">
+  <div class="gate-card">
+    <div class="gate-logo">Forecast<span>Pilot</span></div>
+    <div class="gate-sub">AI Revenue Agent</div>
+    <div class="gate-label">Anthropic API Key</div>
+    <input type="password" class="gate-input" id="api-key-input" placeholder="sk-ant-..." autocomplete="off"/>
+    <div class="gate-note">
+      Your key is stored only in <code style="color:var(--accent);background:var(--bg3);padding:1px 5px;border-radius:3px;font-size:11px;">sessionStorage</code> and never sent anywhere except directly to the Anthropic API. Get a key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>.
+    </div>
+    <button class="gate-btn" onclick="submitKey()">Launch ForecastPilot →</button>
+    <div class="gate-error" id="gate-error">Invalid key format — should start with sk-ant-</div>
+  </div>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">Forecast<span>Pilot</span></div>
+      <div class="logo-sub">AI Revenue Agent</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Formula</div>
+      <div class="formula">
+        <span class="f-highlight">AI Revenue</span> =<br>
+        &nbsp;&nbsp;<span class="f-highlight">SOM</span> <span class="f-op">×</span> Adoption<br>
+        &nbsp;&nbsp;<span class="f-op">×</span> Usage/User<br>
+        &nbsp;&nbsp;<span class="f-op">×</span> Retention<br>
+        &nbsp;&nbsp;<span class="f-op">×</span> Rev/Unit
+      </div>
+    </div>
+    <div class="sidebar-section" style="flex:1;overflow-y:auto;">
+      <div class="sidebar-label">Reasoning steps</div>
+      <ul class="steps-list" id="steps-list">
+        <li data-step="1"><span class="step-num">1</span> Derive SOM from TAM</li>
+        <li data-step="2"><span class="step-num">2</span> Select adoption curve</li>
+        <li data-step="3"><span class="step-num">3</span> Segment usage profiles</li>
+        <li data-step="4"><span class="step-num">4</span> Model revenue paths</li>
+        <li data-step="5"><span class="step-num">5</span> Apply cohort retention</li>
+        <li data-step="6"><span class="step-num">6</span> Generate 3 scenarios</li>
+        <li data-step="7"><span class="step-num">7</span> Triangulation checks</li>
+        <li data-step="8"><span class="step-num">8</span> Forecast + confidence</li>
+      </ul>
+    </div>
+    <div class="sidebar-footer">
+      <div class="model-badge"><span class="model-dot"></span>claude-opus-4-6</div>
+      <button class="key-btn" onclick="resetKey()" title="Change API key">⌀ key</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <span class="topbar-title">// revenue forecasting session</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" id="new-btn" style="display:none;" onclick="newSession()">+ New forecast</button>
+      </div>
+    </div>
+    <div class="chat-area" id="chat-area">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">◈</div>
+        <h1>Ready to forecast.</h1>
+        <p>Give me your total user base and a description of your AI feature. I'll run the full 8-step framework and return three scenarios — conservative, base, and optimistic.</p>
+        <div class="starter-grid">
+          <div class="starter-card" onclick="fillInput('100,000 users. AI design suggestion engine embedded in our CAD tool — recommends geometry optimisations for engineers during the modelling phase.')">
+            <div class="s-label">Example 1</div>
+            <div class="s-text">CAD tool with AI design suggestions — 100k engineers</div>
+          </div>
+          <div class="starter-card" onclick="fillInput('45,000 users. AI contract review assistant for a legal SaaS platform — highlights risky clauses and suggests edits inline for lawyers and paralegals.')">
+            <div class="s-label">Example 2</div>
+            <div class="s-text">Legal SaaS with AI contract review — 45k users</div>
+          </div>
+          <div class="starter-card" onclick="fillInput('250,000 users. AI writing assistant embedded in a B2B project management tool — helps PMs draft project briefs, status updates, and stakeholder comms.')">
+            <div class="s-label">Example 3</div>
+            <div class="s-text">PM tool with AI writing assistant — 250k users</div>
+          </div>
+          <div class="starter-card" onclick="fillInput('12,000 users. AI anomaly detection feature in a manufacturing IoT platform — automatically flags equipment deviation patterns for plant operators.')">
+            <div class="s-label">Example 4</div>
+            <div class="s-text">IoT platform with AI anomaly detection — 12k users</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="input-area">
+      <div class="input-row">
+        <div class="input-wrap">
+          <textarea id="user-input" rows="1" placeholder="Enter your TAM and AI feature description…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        </div>
+        <button class="btn btn-primary" id="send-btn" onclick="sendMessage()">Send →</button>
+      </div>
+      <div class="input-hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line</div>
+    </div>
+  </main>
+</div>
+
+<script>
+const SYSTEM_PROMPT = `You are ForecastPilot, an expert AI Revenue Forecasting Agent built for B2B SaaS product and finance teams. You apply a rigorous 8-step bottom-up forecasting methodology to produce structured, three-scenario AI revenue forecasts from minimal inputs.
+
+## Your inputs
+You receive two required inputs from the user:
+1. TAM — total user base (a number)
+2. AI feature description — what the AI does and who uses it
+
+You may ask UP TO 3 clarifying questions if inputs are ambiguous before proceeding. After receiving answers (or if inputs are clear enough), you MUST proceed with stated assumptions. Never ask more than 3 questions total.
+
+## Your 8-step reasoning process
+Work through every step in order. State your assumptions explicitly at each step, labelling them as [ASSUMED] or [PROVIDED].
+
+### Step 1: Derive SOM from TAM
+Apply three filters to get to the Serviceable Obtainable Market:
+- SAM: Remove users on plans/regions/versions without AI access
+- SOM: Further filter by role relevance, account health, compliance barriers
+State your filter percentages and reasoning. SOM is your eligible user base.
+
+### Step 2: Select adoption curve
+Use B2B SaaS AI benchmarks as baseline:
+- Month 3: 10–15% of SOM
+- Month 12: 20–30% of SOM
+- Month 36: 40–60% of SOM
+
+Adjust up or down based on:
+- Workflow embeddedness (+5–15% if embedded, -5–10% if new behaviour required)
+- Onboarding quality (+5–10% if guided, -5% if self-serve only)
+- Feature gating (-10–20% if behind a tier upgrade)
+- Market buzz (+5–10% if strong AI tailwind)
+
+Produce a month-by-month adoption rate curve for 24 months.
+
+### Step 3: Segment usage profiles
+Define three tiers of active users:
+- Light (bottom 50%): minor tasks, low frequency
+- Moderate (50th–85th percentile): weekly workflows
+- Heavy (top 15%): core production work, daily use
+
+For each tier, estimate actions/tasks per month based on the feature description. Compute a blended average usage per active user per month. Apply 2–5% monthly usage growth in year 1, tapering in year 2.
+
+### Step 4: Model revenue paths
+Map consumption to two revenue paths:
+- Path A (Subscription upgrades): Users whose usage exceeds their tier allowance upgrade to higher plans. Estimate number of upgrades × incremental subscription revenue.
+- Path B (On-demand overages): Usage beyond subscription allowances billed at overage rates. Estimate overage volume × overage rate.
+
+Split Light / Moderate / Heavy consumption between paths based on tier allowances.
+
+### Step 5: Apply cohort retention
+Use this retention curve as default (adjust if data provided):
+- Month 1: 100%
+- Month 2: 60–70%
+- Month 3: 45–55%
+- Month 6: 35–45%
+- Month 12+: 25–40% (retention floor)
+
+For each forecast month: active users = new adopters + surviving users from all prior cohorts.
+
+### Step 6: Generate 3 scenarios
+Hold pricing constant. Vary only:
+- Adoption rate: Conservative −40% of base, Optimistic +60% of base
+- Blended usage: Conservative −33%, Optimistic +50%
+- New customer growth: Conservative = pipeline low-end, Base = mid-point, Optimistic = upside
+
+Run the full formula under each scenario: Eligible Users × Adoption Rate × Usage per User × Retention Rate × Revenue per Unit of Usage.
+
+### Step 7: Run triangulation checks
+Validate your bottom-up number from three angles:
+1. Revenue share check: AI revenue as % of total product revenue. Expected: 3–8% in year 1, 10–20% by year 3. Flag if outside this range.
+2. Unit economics check: Map consumption to implied infrastructure cost. Gross margin should be >60% at scale. Flag if below.
+3. ARPU benchmark check: Revenue per eligible user vs. public comps — GitHub Copilot (~$19/user/month), Adobe Firefly (embedded in $55+/month CC), Autodesk AI (embedded in $300+/year). Flag if your figure is >2× higher or lower than closest comp.
+
+### Step 8: Return forecast + confidence rating
+Produce the full structured output. Rate your overall confidence: High (most inputs provided), Medium (several key assumptions inferred), Low (minimal inputs, heavy inference).
+
+---
+
+## Output format
+
+Your response must have two parts:
+
+### Part 1: Markdown report
+Structure it with these exact sections:
+# ForecastPilot — AI Revenue Forecast
+## Executive summary
+## SOM derivation
+## Adoption curve
+## Usage segmentation
+## Revenue model
+## Retention model
+## Scenario forecast table
+(show a clear table: Month 6 / Month 12 / Month 24 × Conservative / Base / Optimistic)
+## Triangulation & validation
+## Assumption log
+(table with columns: Assumption | Value used | Source | Confidence)
+## Confidence rating
+
+### Part 2: JSON block
+After the markdown report, append a JSON block using EXACTLY this delimiter format:
+
+FORECAST_JSON_START
+{
+  "metadata": { "generated_at": "<ISO timestamp>", "model": "claude-opus-4-6", "confidence": "<High|Medium|Low>" },
+  "inputs": { "tam": <number>, "feature_description": "<string>" },
+  "som_derivation": { "tam": <number>, "sam": <number>, "som": <number>, "sam_filter_pct": <number>, "som_filter_pct": <number> },
+  "adoption_curve": { "month_3_pct": <number>, "month_12_pct": <number>, "month_24_pct": <number> },
+  "usage_segmentation": { "light_pct": 0.50, "moderate_pct": 0.35, "heavy_pct": 0.15, "blended_usage_per_user_month": <number> },
+  "retention_floor_pct": <number>,
+  "scenarios": {
+    "conservative": { "month_6": <number>, "month_12": <number>, "month_24": <number> },
+    "base": { "month_6": <number>, "month_12": <number>, "month_24": <number> },
+    "optimistic": { "month_6": <number>, "month_12": <number>, "month_24": <number> }
+  },
+  "triangulation": { "revenue_share_check": "<pass|warn|fail>", "unit_economics_check": "<pass|warn|fail>", "arpu_benchmark_check": "<pass|warn|fail>", "flags": ["<any flags>"] },
+  "assumptions": [ {"assumption": "<string>", "value": "<string>", "source": "<ASSUMED|PROVIDED>", "confidence": "<High|Medium|Low>"} ]
+}
+FORECAST_JSON_END
+
+Always include both parts in every forecast response. Never skip the JSON block.`;
+
+// API Key management
+function submitKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key.startsWith('sk-ant-') && !key.startsWith('sk-')) {
+    document.getElementById('gate-error').style.display = 'block';
+    return;
+  }
+  sessionStorage.setItem('fp_key', key);
+  document.getElementById('api-gate').style.display = 'none';
+}
+
+function resetKey() {
+  sessionStorage.removeItem('fp_key');
+  document.getElementById('api-key-input').value = '';
+  document.getElementById('gate-error').style.display = 'none';
+  document.getElementById('api-gate').style.display = 'flex';
+}
+
+function getKey() { return sessionStorage.getItem('fp_key'); }
+
+// On load: check if key already stored
+window.addEventListener('load', () => {
+  if (getKey()) document.getElementById('api-gate').style.display = 'none';
+  document.getElementById('api-key-input').addEventListener('keydown', e => { if (e.key === 'Enter') submitKey(); });
+});
+
+marked.setOptions({ breaks: true, gfm: true });
+
+let history = [];
+let isStreaming = false;
+let renderTimer = null;
+let currentBuffer = '';
+let currentBubble = null;
+
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 140) + 'px'; }
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function fillInput(text) { const i = document.getElementById('user-input'); i.value = text; autoResize(i); i.focus(); }
+function hideWelcome() { const w = document.getElementById('welcome'); if (w) w.remove(); }
+
+function newSession() {
+  history = [];
+  document.getElementById('chat-area').innerHTML = '';
+  document.getElementById('new-btn').style.display = 'none';
+  resetSteps();
+  const w = document.createElement('div');
+  w.className = 'welcome'; w.id = 'welcome';
+  w.innerHTML = `<div class="welcome-icon">◈</div><h1>Ready to forecast.</h1><p>Give me your total user base and a description of your AI feature.</p>
+  <div class="starter-grid">
+    <div class="starter-card" onclick="fillInput('100,000 users. AI design suggestion engine embedded in our CAD tool.')"><div class="s-label">Example 1</div><div class="s-text">CAD tool with AI design suggestions — 100k engineers</div></div>
+    <div class="starter-card" onclick="fillInput('45,000 users. AI contract review assistant for a legal SaaS platform.')"><div class="s-label">Example 2</div><div class="s-text">Legal SaaS with AI contract review — 45k users</div></div>
+  </div>`;
+  document.getElementById('chat-area').appendChild(w);
+}
+
+function resetSteps() {
+  document.querySelectorAll('#steps-list li').forEach((li, i) => {
+    li.classList.remove('active', 'done');
+    li.querySelector('.step-num').textContent = i + 1;
+  });
+}
+
+function activateStep(n) {
+  document.querySelectorAll('#steps-list li').forEach((li, i) => {
+    const s = i + 1;
+    if (s < n) { li.classList.add('done'); li.classList.remove('active'); li.querySelector('.step-num').textContent = '✓'; }
+    else if (s === n) { li.classList.add('active'); li.classList.remove('done'); li.querySelector('.step-num').textContent = n; }
+    else { li.classList.remove('active', 'done'); li.querySelector('.step-num').textContent = s; }
+  });
+}
+
+function detectStep(text) {
+  const patterns = [
+    { step: 1, re: /SOM|serviceable obtainable|derive.*tam/i },
+    { step: 2, re: /adoption curve|adoption rate/i },
+    { step: 3, re: /usage.*profile|light.*moderate.*heavy|blended.*usage/i },
+    { step: 4, re: /revenue path|subscription upgrade|on-demand|overage/i },
+    { step: 5, re: /retention|cohort/i },
+    { step: 6, re: /conservative|optimistic|scenario/i },
+    { step: 7, re: /triangulation|benchmark check/i },
+    { step: 8, re: /confidence rating|FORECAST_JSON/i },
+  ];
+  for (const { step, re } of patterns) { if (re.test(text)) activateStep(step); }
+}
+
+function appendUserMessage(text) {
+  hideWelcome();
+  const chat = document.getElementById('chat-area');
+  const msg = document.createElement('div');
+  msg.className = 'message user';
+  msg.innerHTML = `<div class="msg-bubble">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</div>`;
+  chat.appendChild(msg);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showReasoning() {
+  const chat = document.getElementById('chat-area');
+  const el = document.createElement('div');
+  el.className = 'message assistant'; el.id = 'reasoning-indicator';
+  el.innerHTML = `<div class="reasoning-indicator"><div class="reasoning-dots"><span></span><span></span><span></span></div>Analysing inputs and building forecast…</div>`;
+  chat.appendChild(el); chat.scrollTop = chat.scrollHeight;
+}
+
+function removeReasoning() { const el = document.getElementById('reasoning-indicator'); if (el) el.remove(); }
+
+function createAssistantBubble() {
+  const chat = document.getElementById('chat-area');
+  const msg = document.createElement('div'); msg.className = 'message assistant';
+  const bubble = document.createElement('div'); bubble.className = 'msg-bubble';
+  msg.appendChild(bubble); chat.appendChild(msg); return bubble;
+}
+
+function cleanForDisplay(text) {
+  const i = text.indexOf('FORECAST_JSON_START');
+  return i !== -1 ? text.substring(0, i).trim() : text;
+}
+
+function extractJSON(text) {
+  const s = text.indexOf('FORECAST_JSON_START'), e = text.indexOf('FORECAST_JSON_END');
+  if (s === -1 || e === -1) return null;
+  try { return JSON.parse(text.substring(s + 'FORECAST_JSON_START'.length, e).trim()); } catch { return null; }
+}
+
+function scheduleRender() {
+  if (renderTimer) return;
+  renderTimer = setInterval(() => {
+    if (currentBubble && currentBuffer) {
+      currentBubble.innerHTML = marked.parse(cleanForDisplay(currentBuffer));
+      document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
+      detectStep(currentBuffer);
+    }
+  }, 80);
+}
+
+function finaliseMessage(fullText) {
+  clearInterval(renderTimer); renderTimer = null;
+  currentBubble.innerHTML = marked.parse(cleanForDisplay(fullText));
+  const jsonData = extractJSON(fullText);
+  if (jsonData) {
+    const bar = document.createElement('div'); bar.className = 'download-bar';
+    bar.innerHTML = `<span>◈ Forecast JSON ready</span><button class="btn btn-primary" style="padding:5px 12px;font-size:11px;" onclick="downloadJSON(this)">Download JSON ↓</button>`;
+    bar.querySelector('button').dataset.json = JSON.stringify(jsonData, null, 2);
+    currentBubble.appendChild(bar);
+  }
+  document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
+  document.getElementById('new-btn').style.display = 'inline-flex';
+  activateStep(8);
+}
+
+function downloadJSON(btn) {
+  const blob = new Blob([btn.dataset.json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `forecastpilot-${Date.now()}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function sendMessage() {
+  if (isStreaming) return;
+  const input = document.getElementById('user-input');
+  const text = input.value.trim(); if (!text) return;
+  const key = getKey(); if (!key) { resetKey(); return; }
+  input.value = ''; input.style.height = 'auto';
+  document.getElementById('send-btn').disabled = true;
+  isStreaming = true;
+  history.push({ role: 'user', content: text });
+  appendUserMessage(text); showReasoning();
+  currentBuffer = ''; currentBubble = null;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 8000,
+        system: SYSTEM_PROMPT,
+        messages: history,
+        stream: true
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `API error ${res.status}`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let firstChunk = true;
+
+    while (true) {
+      const { done, value } = await reader.read(); if (done) break;
+      const lines = decoder.decode(value).split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(data);
+          const text = parsed.delta?.text || (parsed.type === 'content_block_delta' ? parsed.delta?.text : null);
+          if (text) {
+            if (firstChunk) { removeReasoning(); currentBubble = createAssistantBubble(); scheduleRender(); firstChunk = false; }
+            currentBuffer += text;
+          }
+        } catch {}
+      }
+    }
+
+    finaliseMessage(currentBuffer);
+    history.push({ role: 'assistant', content: currentBuffer });
+
+  } catch (err) {
+    removeReasoning();
+    if (!currentBubble) currentBubble = createAssistantBubble();
+    clearInterval(renderTimer); renderTimer = null;
+    currentBubble.innerHTML = `<span style="color:#ff6b6b;font-family:var(--mono);font-size:13px;">Error: ${err.message}</span>`;
+    if (err.message.includes('401') || err.message.includes('invalid') || err.message.includes('auth')) resetKey();
+  } finally {
+    isStreaming = false;
+    document.getElementById('send-btn').disabled = false;
+  }
+}
+</script>
+</body>
+</html>
