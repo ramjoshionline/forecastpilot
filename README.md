@@ -9,6 +9,18 @@ No sign-up. No installation. Runs entirely in the browser with your own Anthropi
 
 ---
 
+## The problem ForecastPilot solves
+
+**The problem**
+
+B2B SaaS teams make AI revenue forecasting decisions with almost no rigour. A 2023 McKinsey survey found that fewer than 30% of companies have a repeatable process for forecasting new feature revenue — most rely on gut feel, a single analyst's spreadsheet, or top-down targets handed down from leadership. The cost of getting this wrong is significant: over-investment in features that won't monetise, under-investment in ones that will, and go-to-market plans built on assumptions nobody has actually stress-tested. The specific failure modes are consistent: TAM used instead of SOM (inflating the addressable base by 3–5×), flat adoption rates instead of curves (ignoring the drop-off that happens in months 2 and 3), and no retention modelling (which understates long-term revenue by as much as 40%). The result is a forecast that looks rigorous in a slide deck but falls apart the first time someone asks "what assumptions is this based on?"
+
+**How ForecastPilot solves it**
+
+ForecastPilot encodes a rigorous 8-step bottom-up methodology into an AI agent that runs in under two minutes on two inputs: a user base and a feature description. It derives SOM from TAM using explicit role, plan, and compliance filters. It builds a month-by-month adoption curve anchored to B2B SaaS benchmarks — not a flat rate. It segments users into Light, Moderate, and Heavy profiles to compute a weighted usage average instead of a misleading mean. It models two revenue paths separately: subscription upgrades and on-demand overages. It applies a cohort retention curve with a realistic long-term floor. It generates three scenarios — Conservative, Base, Optimistic — holding pricing constant so the outputs are strategically meaningful. It validates the bottom-up number against three independent checks: revenue share percentage, implied gross margin, and ARPU benchmarks from GitHub Copilot, Adobe Firefly, and Autodesk AI. And it logs every assumption it made, labelled as provided or inferred, with a confidence rating — so the reader knows exactly where to focus their data collection effort. The output is a structured PDF report. The whole process takes 90 seconds.
+
+---
+
 ## Why this exists
 
 Most AI revenue forecasts fail in one of two ways: they're too optimistic (using TAM instead of SOM, ignoring retention floors, skipping validation checks) or they're too resource-heavy to run regularly (requiring a dedicated analyst, a spreadsheet model, and a strategy offsite).
