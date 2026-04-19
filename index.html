@@ -130,7 +130,7 @@ html,body{min-height:100%;background:var(--paper);color:var(--ink);font-family:v
     <div class="gate-title">Enter your<br>Anthropic API key</div>
     <div class="gate-label">API Key</div>
     <input type="password" id="gate-key" class="gate-input" placeholder="sk-ant-api03-..." autocomplete="off"/>
-    <div class="gate-note">Stored in <code style="font-size:11px;background:var(--paper2);padding:1px 4px;">sessionStorage</code> only. Sent directly to the Anthropic API — never to any third party. Get a key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>.</div>
+    <div class="gate-note">Saved in your browser's <code style="font-size:11px;background:var(--paper2);padding:1px 4px;">localStorage</code> so you won't need to enter it again. Sent directly to the Anthropic API — never to any third party. Get a key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>.</div>
     <button class="gate-submit" onclick="submitKey()">Launch ForecastPilot →</button>
     <div class="gate-err" id="gate-err">Key must start with sk-ant- or sk-</div>
   </div>
@@ -361,11 +361,11 @@ Use clear prose, tables where helpful. No JSON. No delimiters. Just the clean ma
 function submitKey(){
   const k=document.getElementById('gate-key').value.trim();
   if(!k.startsWith('sk-')){document.getElementById('gate-err').style.display='block';return;}
-  sessionStorage.setItem('fp_key',k);
+  localStorage.setItem('fp_key',k);
   document.getElementById('gate').style.display='none';
 }
-function resetKey(){sessionStorage.removeItem('fp_key');location.reload();}
-function getKey(){return sessionStorage.getItem('fp_key');}
+function resetKey(){localStorage.removeItem('fp_key');location.reload();}
+function getKey(){return localStorage.getItem('fp_key');}
 
 window.addEventListener('load',()=>{
   if(getKey())document.getElementById('gate').style.display='none';
