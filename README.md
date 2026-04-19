@@ -272,39 +272,4 @@ If this were a production product, the natural next steps would be:
 
 ---
 
-## Project structure
 
-```
-forecastpilot/
-├── index.html          # Single-file static app (GitHub Pages)
-├── system_prompt.txt   # The agent's reasoning instructions — the methodology
-├── _config.yml         # GitHub Pages config
-├── README.md
-└── server/             # Optional Node.js/Express version (server-side API key)
-    ├── server.js
-    ├── public/index.html
-    ├── .env.example
-    └── package.json
-```
-
-The most important file is `system_prompt.txt`. It's the agent's brain — the full 8-step methodology encoded as reasoning instructions. Reading it gives a complete picture of how the forecast is built.
-
----
-
-## Run it locally
-
-```bash
-git clone https://github.com/ramjoshionline/forecastpilot.git
-cd forecastpilot
-open index.html   # macOS — or double-click the file
-```
-
-Enter your Anthropic API key when prompted (get one at [console.anthropic.com](https://console.anthropic.com)). That's it — no npm install, no build step, no server.
-
----
-
-## Built by
-
-[Ram Joshi](https://linkedin.com/in/ramjoshi) — AI Product Manager based in Munich, building at the intersection of product strategy and AI agent design.
-
-Questions, feedback, or collaboration: open an issue or connect on LinkedIn.
