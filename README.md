@@ -36,6 +36,8 @@ And it logs every assumption it made, labelled as provided or inferred, with a c
 
 ---
 
+
+
 ## What it does
 
 Give ForecastPilot two inputs:
