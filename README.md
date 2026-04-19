@@ -259,7 +259,7 @@ If this were a production product, the natural next steps would be:
 
 ## Lessons learned
 
-Building ForecastPilot surfaced a set of realisable insights about AI agent design that I haven't seen written down clearly elsewhere. Most of them are counterintuitive.
+Building ForecastPilot surfaced a set of realisable insights about AI agent design - Most of them are counterintuitive.
 
 ---
 
@@ -269,8 +269,6 @@ The biggest misconception in AI product development right now is that the model 
 
 ForecastPilot could be rebuilt on GPT-4o, Gemini, or any frontier model in an afternoon. What can't be easily replicated is the specific sequence of steps, the adjustment factors, the benchmark anchors, and the validation checks — built up from real experience running revenue forecasts.
 
-**PM implication**: When scoping an AI agent, spend 80% of your time on the system prompt and 20% on the infrastructure. Most teams do the opposite.
-
 ---
 
 ### 2. Constraints on the agent improve output quality
@@ -279,13 +277,10 @@ The instinct when building AI agents is to give them maximum freedom — "let th
 
 - Fixed 8-step sequence, cannot be reordered
 - Pricing held constant across scenarios (not a variable)
-- Maximum 3 clarifying questions before proceeding
 - Every assumption must be labelled `[PROVIDED]` or `[ASSUMED]`
 - Every triangulation check must produce a `pass`, `warn`, or `fail`
 
-Each constraint was added because the unconstrained version produced worse output. Without the 3-question limit, the agent stalled. Without the pricing constraint, scenario outputs became strategically meaningless. Without assumption labelling, outputs felt authoritative but were actually guesses.
-
-**PM implication**: Agent quality is often a function of how precisely you've scoped what the agent is *not* allowed to do. Constraints are features.
+Agent quality is often a function of how precisely you've scoped what the agent is *not* allowed to do. Constraints are features.
 
 ---
 
@@ -295,25 +290,11 @@ The decision to stream output token-by-token rather than wait for a complete res
 
 When users watch the agent reason through Step 1 (market sizing) before Step 2 (adoption curve), they can verify that the logic is sequential and grounded. When they see triangulation checks happen *after* the scenario output — not before — they understand that the agent is validating its own answer, not just generating one.
 
-This is the difference between an AI that *feels* rigorous and one that demonstrably *is* rigorous. Streaming makes the difference visible.
-
-**PM implication**: For analytical AI agents, streaming is not a performance optimisation. It's a product integrity feature. Hide the reasoning and users will distrust the output, regardless of quality.
+For analytical AI agents, streaming is not a performance optimisation. It's a product integrity feature. Hide the reasoning and users might distrust the output, regardless of quality.
 
 ---
 
-### 4. The hardest problem wasn't the AI — it was scope definition
-
-The most difficult part of building this wasn't the model, the streaming implementation, or the PDF export. It was deciding what the agent should *not* do.
-
-Early versions tried to handle: multi-turn refinement, sensitivity analysis, competitive scenario modelling, and CRM data integration. Each was technically feasible. Each made the agent worse — more complex, harder to trust, slower, more likely to hallucinate on edge cases.
-
-The final version does exactly one thing: take two inputs, run 8 steps, return a structured output. That scope decision was the hardest product call made in this project.
-
-**PM implication**: The most important design decisions for AI agents are subtractive, not additive. What you remove from scope is usually more valuable than what you add.
-
----
-
-### 5. Assumption transparency is the killer feature
+### 4. Assumption transparency is the killer feature
 
 The Assumption Log — a table at the end of every forecast showing every inferred value, its source, and its confidence level — was added as an afterthought. It turned out to be the most valuable part of the output.
 
@@ -321,60 +302,23 @@ It tells the user exactly where to focus their data collection efforts. If the m
 
 **AI agents that surface their uncertainty are more useful than those that hide it.** Confident-sounding outputs that bury assumptions are worse than hedged outputs that make assumptions explicit — even if the underlying numbers are identical.
 
-**PM implication**: Build assumption surfacing into your agent's output format from day one. It's what separates a tool that creates dependency from one that builds capability.
+Build assumption surfacing into your agent's output format from day one. It's what separates a tool that creates dependency from one that builds capability.
 
 ---
 
-### 6. Static benchmarks in system prompts age badly
+### 5. Static benchmarks in system prompts age badly
 
-The triangulation checks compare against ARPU benchmarks for GitHub Copilot, Adobe Firefly, and Autodesk AI — embedded as static values in the system prompt. This works today. In 12 months it will be wrong.
+The triangulation checks compare against ARPU benchmarks for GitHub Copilot, and Adobe Firefly — embedded as static values in the system prompt. This works today. In 12 months it will be wrong.
 
 The right architecture for production would be a **web search tool call** at Step 7 to pull current ARPU data rather than relying on baked-in values. But that adds latency and cost.
 
 This is a classic AI product tension that doesn't get discussed enough: **knowledge freshness vs. inference cost**. Static benchmarks in prompts are technical debt with a known expiry date.
 
-**PM implication**: Be explicit about the freshness window of any AI agent's knowledge. Design the recalibration mechanism before you need it.
+Be explicit about the freshness window of any AI agent's knowledge. Design the recalibration mechanism before you need it.
+
+
 
 ---
-
-### 7. The model choice matters most at the edges
-
-For a well-structured input, most capable models return reasonable forecasts. The model choice becomes decisive at the edges:
-
-- **Ambiguous inputs**: Opus handles "We have an AI thing for our sales team, about 200 people" by asking one targeted clarifying question. Smaller models either hallucinate a specific interpretation or ask too many questions.
-- **Unusual vertical constraints**: "Our users are in Germany, subject to GDPR Article 22, AI feature touches automated decision-making" — Opus correctly identifies this as a compliance barrier in Step 1. Smaller models ignore it.
-- **Cross-scenario maths consistency**: Conservative / Base / Optimistic must be arithmetically consistent. Smaller models drift. Opus holds the maths.
-
-**PM implication**: Don't evaluate AI models on easy inputs. Evaluate them on the 10% of inputs that are ambiguous, constrained, or edge-case heavy. That's where model quality shows up in user outcomes.
-
 ---
 
-### 8. Building in public accelerates thinking
-
-Putting this on GitHub Pages — making the URL shareable — forced product decisions that would have been deferred indefinitely: user-facing API key handling, first-run experience, error states, mobile layout, PDF formatting.
-
-Each felt like polish when building in private. When the URL was shareable, they became blocking issues.
-
-**PM implication**: The fastest way to find out what matters in an AI product is to give it a URL and share it with five people who don't know you built it. The first 10 minutes of a real user session will surface more issues than a week of internal review.
-
----
-
-## PM perspective: what this project is actually about
-
-ForecastPilot is a demonstration of a specific thesis about where AI product value lives:
-
-**The insight layer, not the interface layer.**
-
-Most AI product investment right now is going into interfaces — chat UIs, voice interfaces, copilot sidebars, embedded suggestions. These are real improvements. But they're easily copied and commoditised.
-
-The harder, more durable investment is in the *insight layer*: the structured methodologies, domain knowledge, reasoning pipelines, and validation frameworks that determine whether an AI agent produces genuinely useful output or plausible-sounding noise.
-
-ForecastPilot's interface is 514 lines of vanilla HTML. That's not the point. The system prompt — the encoded methodology — is the point. It represents a way of thinking about revenue forecasting that took years to develop and two hours to encode. The encoding is what makes it scalable.
-
-This is the most important product pattern in AI right now: **encode expertise, don't just automate tasks**. There's a difference between an agent that does your job faster and an agent that applies 20 years of domain judgment at the speed of an API call.
-
-The former is a productivity tool. The latter is a capability multiplier. ForecastPilot is a small attempt at the latter.
-
----
-
-*Built by [Ram Joshi](https://linkedin.com/in/ramjoshi) · Munich · AI Product Manager*
+*Built by [Ram Joshi](https://linkedin.com/in/ramjoshi) *
