@@ -61,32 +61,6 @@ The agent can ask up to 3 clarifying questions before proceeding if inputs are a
 
 ---
 
-### The system prompt as the orchestration layer
-
-There is no external orchestration framework (no LangChain, no LlamaIndex, no AutoGen). **The system prompt is the orchestration layer.**
-
-This is intentional. The methodology is the core IP. Encoding it in a system prompt rather than in code means:
-- The reasoning steps are readable, auditable, and version-controlled in plain text (`system_prompt.txt`)
-- The agent's behaviour can be updated without changing application code
-- The prompt itself serves as documentation of the methodology
-
-The system prompt defines an ordered 8-step pipeline. The model is instructed to work through every step sequentially and to label each assumption as `[PROVIDED]` or `[ASSUMED]`. This is a form of **chain-of-thought prompting** — forcing the model to externalise its reasoning rather than jump to a conclusion.
-
-```
-Step 1 → Market sizing      (TAM → SAM → SOM)
-Step 2 → Adoption modelling (benchmark curve + adjustments)
-Step 3 → Usage segmentation (Light / Moderate / Heavy profiles)
-Step 4 → Revenue path mapping (upgrades vs. overages)
-Step 5 → Retention modelling (cohort curve + floor)
-Step 6 → Scenario generation (Conservative / Base / Optimistic)
-Step 7 → Triangulation & validation (3 independent checks)
-Step 8 → Confidence rating + assumption log
-```
-
-The model cannot skip steps or reorder them. Each step's output feeds the next.
-
----
-
 ### Memory architecture: stateless by design
 
 ForecastPilot has **no persistent memory**. Each forecast is an independent, self-contained inference call.
@@ -244,7 +218,6 @@ The overall confidence rating (High / Medium / Low) reflects the proportion of k
 | Layer | What's used | Decision rationale |
 |---|---|---|
 | **AI model** | `claude-opus-4-6` | Best-in-class multi-step reasoning and instruction following |
-| **Orchestration** | System prompt (plain text) | Methodology as code — readable, auditable, version-controlled |
 | **Streaming** | Anthropic SSE API | Real-time transparency of agent reasoning steps |
 | **Frontend** | Vanilla HTML/CSS/JS | Zero build step, zero dependencies, works as a static file |
 | **PDF export** | `html2pdf.js` (client-side) | No server needed; report generated locally in the browser |
@@ -256,7 +229,6 @@ The overall confidence rating (High / Medium / Low) reflects the proportion of k
 ## What this is not
 
 - **Not a general-purpose AI assistant.** ForecastPilot does one thing. Scope control is a feature.
-- **Not a replacement for a finance team.** It's a starting point — a rigorous first draft that a CFO or VP of Product can stress-test, not sign off on blindly.
 - **Not a black box.** Every assumption is visible. Every step is traceable. The methodology is open-source.
 
 ---
